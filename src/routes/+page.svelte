@@ -1,2 +1,12 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
+<script lang="ts">
+    import { onMount } from 'svelte';
+    import Board from '$lib/components/Board.svelte';
+
+</script>
+
+<div class="align-center text-center">
+    <h1>Connect 4 AI</h1>
+    <Board>
+        <slot></slot>
+    </Board>
+</div>
