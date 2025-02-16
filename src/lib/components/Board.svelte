@@ -7,16 +7,32 @@
     const cols = 7;
     
     let board = Array.from({length: rows}, () => Array(cols).fill(0));
-    let player = 1; // 1 for red, -1 for yellow
-    let winner = 0;
-    let isProcessing = false;
+    let player: number = 1; // 1 for red, -1 for yellow
+    let winner: number = 0;
+    let isProcessing: Boolean = false;
+
+
+    async function resetGameResponse() {
+        const response = await fetch('http://localhost:8080/reset-board', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                board: board
+            })
+        });
+
+        return await response.json();
+    }
 
 
     async function resetGame() {
-        board = Array.from({length: rows}, () => Array(cols).fill(0));
+        const resetResponse = await resetGameResponse();
+        board = resetResponse.board;
         player = 1;
         winner = 0;
-    }
+   }
 
     async function userMoveResponse(player: number, col: number) {
         const response = await fetch('http://localhost:8080/user-move', {
@@ -80,9 +96,13 @@
     async function userMove(mouseEvent: MouseEvent) {
         if (isProcessing || winner !== 0) return;
         
-        const cell = mouseEvent.target as HTMLElement;
-        const col = cell.parentElement ? 
-            Array.from(cell.parentElement.children).indexOf(cell) : -1;
+        // Ensure mouse click came from the board element
+        const target = mouseEvent.target as HTMLElement;
+        if (!target.classList.contains('cell')) return;
+
+        const col = target.parentNode ? Array.from(target.parentNode.children).indexOf(target) % 7 : -1;
+
+        console.log("move made at column: ", col);
 
         // Validate column index
         if (col < 0 || col >= cols) return;
@@ -168,19 +188,22 @@
 
 </style>
 
-<div>
-    <div class="board">
-        {#each Array(rows).fill(null).map((_, i) => rows - 1 - i) as rowIndex}
-            {#each Array(cols) as _, colIndex}
-                <div class="cell">
-                    {#if board[rowIndex][colIndex] === -1}
-                        <div class="yellow-token h-5/6 w-5/6"></div>
-                    {:else if board[rowIndex][colIndex] === 1}
-                        <div class="red-token h-5/6 w-5/6"></div>
-                    {/if}
-                </div>
-            {/each}
+<div class="board">
+    {#each Array(rows).fill(null).map((_, i) => rows - 1 - i) as rowIndex}
+        {#each Array(cols) as _, colIndex}
+            <div class="cell">
+                {#if board[rowIndex][colIndex] === -1}
+                    <div class="yellow-token h-5/6 w-5/6"></div>
+                {:else if board[rowIndex][colIndex] === 1}
+                    <div class="red-token h-5/6 w-5/6"></div>
+                {/if}
+            </div>
         {/each}
-    </div>
-    <button on:click={resetGame}>Reset</button>
+    {/each}
 </div>
+{#if winner}
+    <h2>Player {winner === 1 ? 'Red' : 'Yellow'} wins!</h2>
+{:else}
+    <h2>Player {player === 1 ? 'Red' : 'Yellow'}'s turn</h2>
+{/if}
+<button on:click={resetGame}>Reset</button>

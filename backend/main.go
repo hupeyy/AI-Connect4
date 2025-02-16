@@ -20,6 +20,7 @@ func main() {
 	http.HandleFunc("/user-move", userMoveHandler)
 	http.HandleFunc("/computer-move", computerMoveHandler)
 	http.HandleFunc("/valid-moves", validMovesHandler)
+    http.HandleFunc("/reset-board", resetBoardHandler)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
@@ -119,6 +120,29 @@ func validMovesHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"valid_moves": validColumns,
 	})
+}
+
+func resetBoardHandler(w http.ResponseWriter, r *http.Request) {
+    setHeaders(w)
+
+    if r.Method == "OPTIONS" {
+        w.WriteHeader(http.StatusOK)
+        return
+    }
+
+    var state GameState
+    err := json.NewDecoder(r.Body).Decode(&state)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+
+    newBoard := reset_board(state.Board)
+
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "board": newBoard,
+        "message": "Board reset",
+    })
 }
 
 func setHeaders(w http.ResponseWriter) {
@@ -271,7 +295,7 @@ func evaluate_board(board [][]int) int {
                 board[r][c+2],
                 board[r][c+3],
             }
-            score += evaluateWindow(window)
+            score += evaluate_window(window)
         }
     }
 
@@ -284,7 +308,7 @@ func evaluate_board(board [][]int) int {
                 board[r+2][c],
                 board[r+3][c],
             }
-            score += evaluateWindow(window)
+            score += evaluate_window(window)
         }
     }
 
@@ -297,7 +321,7 @@ func evaluate_board(board [][]int) int {
                 board[r+2][c+2],
                 board[r+3][c+3],
             }
-            score += evaluateWindow(window)
+            score += evaluate_window(window)
         }
     }
 
@@ -310,14 +334,14 @@ func evaluate_board(board [][]int) int {
                 board[r-2][c+2],
                 board[r-3][c+3],
             }
-            score += evaluateWindow(window)
+            score += evaluate_window(window)
         }
     }
 
     return score
 }
 
-func evaluateWindow(window [4]int) int {
+func evaluate_window(window [4]int) int {
     score := 0
     redCount := 0
     yellowCount := 0
@@ -335,7 +359,7 @@ func evaluateWindow(window [4]int) int {
     if redCount > 0 && yellowCount == 0 {
         switch redCount {
         case 3:
-            score += 50
+            score += 1000
         case 2:
             score += 10
         case 1:
@@ -347,7 +371,7 @@ func evaluateWindow(window [4]int) int {
     if yellowCount > 0 && redCount == 0 {
         switch yellowCount {
         case 3:
-            score -= 50
+            score -= 1000
         case 2:
             score -= 10
         case 1:
@@ -386,7 +410,7 @@ func minimax(board [][]int, depth int, alpha int, beta int, maximizingPlayer boo
         bestVal = math.MinInt32
         for _, col := range validMoves {
             // Create new board state for each move
-            newBoard := makeMoveCopy(board, col, 1)
+            newBoard := make_move_copy(board, col, 1)
             val, _ := minimax(newBoard, depth-1, alpha, beta, false)
             
             if val > bestVal {
@@ -401,7 +425,7 @@ func minimax(board [][]int, depth int, alpha int, beta int, maximizingPlayer boo
     } else {
         bestVal = math.MaxInt32
         for _, col := range validMoves {
-            newBoard := makeMoveCopy(board, col, -1)
+            newBoard := make_move_copy(board, col, -1)
             val, _ := minimax(newBoard, depth-1, alpha, beta, true)
             
             if val < bestVal {
@@ -418,7 +442,7 @@ func minimax(board [][]int, depth int, alpha int, beta int, maximizingPlayer boo
     return bestVal, bestCol
 }
 
-func makeMoveCopy(board [][]int, col int, player int) [][]int {
+func make_move_copy(board [][]int, col int, player int) [][]int {
     // Create deep copy
     newBoard := make([][]int, len(board))
     for i := range board {
@@ -434,4 +458,14 @@ func makeMoveCopy(board [][]int, col int, player int) [][]int {
         }
     }
     return newBoard
+}
+
+func reset_board(board [][]int) [][]int {
+    for r := 0; r < len(board); r++ {
+        for c := 0; c < len(board[0]); c++ {
+            board[r][c] = 0
+        }
+    }
+
+    return board 
 }
